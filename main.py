@@ -18,7 +18,7 @@ dataset_columns = None
 data_sample = None
 
 # Mount the static directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/docs", StaticFiles(directory="docs"), name="docs")
 
 # Configure CORS
 app.add_middleware(
