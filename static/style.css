@@ -1,0 +1,266 @@
+body {
+    background-color: #d2f8ff;
+    font-family: Georgia, serif;
+}
+
+h1 {
+    font-family: "Kode Mono", monospace;
+}
+
+div {
+    margin-top: 10px;
+}
+
+.card {
+    border: solid;
+    border-width: 2px;
+    border-radius: 10px;
+}
+
+#prompt-input {
+    margin-top: 10px;
+    border: solid #8db0b1;
+    border-radius: 25px;
+    font-family: "Space Mono", monospace;
+}
+
+#send-btn {
+    margin-left: 5px;
+    margin-top: 10px;
+    border: solid #8db0b1;
+    border-radius: 25px;
+    background-color: rgb(237, 86, 111);
+    font-family: "Space Mono", monospace;
+}
+
+#chat-history {
+    max-height: 350px;
+    overflow-y: auto;  
+    border: 2px solid #8db0b1;
+    padding: 10px;
+    background-color: #fff;
+    box-shadow: 0px 0px 10px 2px #8db0b1;
+}
+
+.message-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 15px;
+    max-width: 80%;
+}
+
+.message {
+    padding: 10px;
+    margin-bottom: 30px;
+    border: 1.5px;
+    border-radius: 15px;
+    box-shadow: 0px 0px 10px 0px #d1d1d1;
+    width: fit-content;
+    max-width: 65%;
+    clear: both;
+}
+
+.user-message {
+    color: white;
+    font-family: "Space Mono", monospace;
+    background-color: rgb(242, 161, 174);
+    align-self: flex-end;
+    margin-left: auto;
+    position: relative;
+    padding: 10px 20px;
+    border-radius: 15px;
+    max-width: 65%;
+    width: fit-content;
+    word-wrap: break-word;
+}
+
+/* The tail of the bubble */
+.user-message:before {
+    content: "";
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-left: 15px solid rgb(242, 161, 174); /* Bubble color */
+    border-right: 15px solid transparent;
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid rgb(242, 161, 174); /* Bubble color */
+    right: -10px; /* Adjust the position */
+    top: 10px; /* Adjust to line up with the message box */
+}
+
+    
+.bot-message {
+    color: black;
+    font-family: "Space Mono", monospace;
+    background-color: #e2e3e5;
+    align-self: flex-start;
+    margin-right: auto;
+    position: relative;
+    padding: 10px 20px;
+    border-radius: 15px;
+    max-width: 65%;
+    width: fit-content;
+    word-wrap: break-word;
+}
+
+/* The tail of the bot bubble */
+.bot-message:before {
+    content: "";
+    width: 0;
+    height: 0;
+    position: absolute;
+    border-right: 15px solid #e2e3e5; /* Bubble color */
+    border-left: 15px solid transparent;
+    border-top: 15px solid transparent;
+    border-bottom: 15px solid #e2e3e5; /* Bubble color */
+    left: -10px; /* Adjust the position */
+    top: 10px;  /* Adjust to line up with the message box */
+}
+
+
+/* File upload area */
+.file-upload-area {
+    border: 2px dashed #8db0b1;
+    border-radius: 15px;
+    padding: 50px;
+    text-align: center;
+    background-color: #fff2f2;
+    transition: background-color 0.3s ease;
+    font-family: "Space Mono", monospace;
+}
+
+/* Change background color on drag hover */
+.file-upload-area.drag-over {
+    background-color: rgb(237, 86, 111); /* Hover color */
+    color: white;
+}
+
+/* Hide the default file input */
+#csv-file-input {
+    display: none;
+}
+
+/* Custom label for file input */
+.custom-file-label {
+    display: inline-block;
+    padding: 10px 20px;
+    background-color: rgb(242, 161, 174);
+    border: 2px solid #fff;
+    border-radius: 25px;
+    font-family: "Space Mono", monospace;
+    color: #fff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+/* Hover effect for Choose File */
+.custom-file-label:hover {
+    background-color: rgb(237, 86, 111);
+    color: white;
+}
+
+/* Feedback text for file upload */
+#file-feedback {
+    font-family: "Space Mono", monospace;
+    font-size: 14px;
+}
+.button-container {
+    display: flex;
+    justify-content: center;
+}
+
+#toggle-button {
+    color: white;
+    background-color: rgb(242, 161, 174);
+    font-family: "Space Mono", monospace;
+    border: 2px solid #fff;
+    border-radius: 25px;
+    padding: 10px;
+}
+
+#toggle-button:hover {
+    background-color: rgb(237, 86, 111);
+    color: white;
+}
+
+/* Modal container */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    background-color: rgba(153, 153, 153, 0.5); /* Black background with opacity */
+}
+
+/* Modal content */
+.modal-content {
+    background-color: white;
+    margin: 15% auto; /* 15% from the top and centered */
+    padding: 20px;
+    border: 3px solid rgb(242, 161, 174);
+    width: 30%; /* Could be more or less, depending on screen size */
+    border-radius: 25px;
+    box-shadow: 0px 0px 30px 10px #918282;
+    text-align: center;
+}
+
+/* Close button (X) */
+.close {
+    color: rgb(242, 161, 174);
+    font-size: 28px;
+    font-weight: bold;
+    position: absolute; /* Allows you to move the close button */
+    top: -3px; /* Moves the button higher */
+    right: 10px; /* Keeps it to the right */
+    cursor: pointer; /* Adds a pointer cursor */
+}
+
+.close:hover,
+.close:focus {
+    color: rgb(237, 86, 111);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Message text styling */
+#modal-message {
+    font-family: "Space Mono", monospace;
+    font-size: 20px;
+    color: #333;
+    padding: 10px;
+}
+
+/* Table preview for uploaded CSV data */
+#data-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+#data-preview th, #data-preview td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+#data-preview th {
+    background-color: #f2f2f2;
+    text-align: left;
+}
+
+#data-preview td {
+    text-align: left;
+}
+
+/* Responsive behavior */
+@media only screen and (max-width: 760px) {
+    h1 {
+        text-align: center;
+    }
+
+    .modal-content {
+        width: 50%;
+    }
+}
