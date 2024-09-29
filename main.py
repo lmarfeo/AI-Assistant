@@ -23,7 +23,7 @@ app.mount("/docs", StaticFiles(directory="docs"), name="docs")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Adjust this to restrict allowed origins
+    allow_origins=["https://lmarfeo.github.io"],  # Adjust this to restrict allowed origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
