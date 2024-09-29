@@ -48,7 +48,7 @@ async function sendMessage() {
     }
 
     try {
-        const response = await fetch('http://127.0.0.1:8000/query', {
+        const response = await fetch('https://ai-assistant-gxmq.onrender.com/query', {
             method: 'POST',
             body: JSON.stringify({ prompt }),
             headers: {
@@ -135,7 +135,7 @@ csvInput.addEventListener('change', async function(event) {
 
     try {
         // Send the CSV to the backend
-        const response = await fetch('https://ai-assistant-gxmq.onrender.com', {
+        const response = await fetch('https://ai-assistant-gxmq.onrender.com/upload_csv', {
             method: 'POST',
             body: formData
         });
