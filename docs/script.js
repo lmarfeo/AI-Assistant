@@ -135,7 +135,7 @@ csvInput.addEventListener('change', async function(event) {
 
     try {
         // Send the CSV to the backend
-        const response = await fetch('http://localhost:8000/upload_csv', {
+        const response = await fetch('https://ai-assistant-gxmq.onrender.com', {
             method: 'POST',
             body: formData
         });
