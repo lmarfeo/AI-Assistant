@@ -32,6 +32,14 @@ div {
     background-color: rgb(237, 86, 111);
     font-family: "Space Mono", monospace;
 }
+#clear-btn {
+    margin-left: 5px;
+    margin-top: 10px;
+    border: solid #8db0b1;
+    border-radius: 25px;
+    background-color: rgb(237, 86, 111);
+    font-family: "Space Mono", monospace;
+}
 
 #chat-history {
     max-height: 350px;
@@ -117,6 +125,11 @@ div {
     top: 10px;  /* Adjust to line up with the message box */
 }
 
+.bot-message svg {
+    display: block; /* Ensure it's displayed as a block element */
+    margin: auto; /* Center it horizontally */
+    fill: rgb(237, 86, 111);
+}
 
 /* File upload area */
 .file-upload-area {
@@ -238,16 +251,19 @@ div {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
+    font-family: "Space Mono", monospace;
+    border-radius: 10px;
 }
 
 #data-preview th, #data-preview td {
-    border: 1px solid #ddd;
+    border: 1px solid #b01c4b;
     padding: 8px;
 }
 
 #data-preview th {
-    background-color: #f2f2f2;
+    background-color: #fff2f2;
     text-align: left;
+    color: rgb(228, 84, 108);
 }
 
 #data-preview td {
