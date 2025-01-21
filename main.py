@@ -20,10 +20,16 @@ data_sample = None
 # Mount the static directory
 app.mount("/docs", StaticFiles(directory="docs"), name="docs")
 
+origins = [
+    "http://127.0.0.1:8001",  # Add the origin you want to allow
+    "http://localhost:8001",
+    "https://lmarfeo.github.io",
+]
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://lmarfeo.github.io"],  # Adjust this to restrict allowed origins
+    allow_origins=origins, #["https://lmarfeo.github.io"],  # Adjust this to restrict allowed origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

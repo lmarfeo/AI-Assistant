@@ -16,6 +16,35 @@ promptInput.addEventListener('input', function(event) {
     sendBtn.disabled = !event.target.value;
 });
 
+function showLoadingSpinner() {
+    const spinner = `<svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <style>
+            .spinner_hzlK { animation: spinner_vc4H .8s linear infinite; animation-delay: -0.8s; }
+            .spinner_koGT { animation-delay: -0.65s; }
+            .spinner_YF1u { animation-delay: -0.5s; }
+            @keyframes spinner_vc4H {
+                0% { y: 1px; height: 22px; }
+                93.75% { y: 5px; height: 14px; opacity: 0.2; }
+            }
+        </style>
+        <rect class="spinner_hzlK" x="1" y="1" width="6" height="22"/>
+        <rect class="spinner_hzlK spinner_koGT" x="9" y="1" width="6" height="22"/>
+        <rect class="spinner_hzlK spinner_YF1u" x="17" y="1" width="6" height="22"/>
+    </svg>`;
+    // Create a div to hold the spinner
+    const messageContainer = document.createElement('div');
+    messageContainer.className = 'bot-message';  // Style this appropriately with CSS
+    messageContainer.innerHTML = spinner;
+    // Add the spinner to the chat area
+    document.querySelector('#chat-history .card-body').appendChild(messageContainer);
+}
+function hideLoadingSpinner() {
+    const spinnerElement = document.querySelector('.bot-message svg');
+    if (spinnerElement) {
+        spinnerElement.parentElement.remove();  // Remove the spinner element
+    }
+}
+
 function appendMessage(content, className) {
     const messageElement = document.createElement('div');
     messageElement.className = `message ${className}`;
@@ -27,7 +56,21 @@ function appendMessage(content, className) {
 
     // Call autoscroll after appending the message
     chatHistory.scrollTop = chatHistory.scrollHeight; // Scroll to bottom
+
+    const clearBtn = document.getElementById('clear-btn');
+    clearBtn.disabled = false;
 }
+
+function clearMessages() {
+    chatHistory.innerHTML = '';
+    console.log("Chat history cleared.");
+    const clearBtn = document.getElementById('clear-btn');
+    clearBtn.disabled = true; 
+}
+
+const clearBtn = document.getElementById('clear-btn');
+clearBtn.addEventListener('click', clearMessages);
+
 
 
 async function sendMessage() {
@@ -46,6 +89,8 @@ async function sendMessage() {
         appendMessage("Please upload a dataset first.", 'bot-message');
         return; // Stop execution if no dataset is uploaded
     }
+
+    showLoadingSpinner();
 
     try {
         const response = await fetch('https://ai-assistant-gxmq.onrender.com/query', {
@@ -86,6 +131,10 @@ async function sendMessage() {
         console.error('Error:', error);
         appendMessage("Error: " + error.message, 'bot-message'); // Display the error message in the chat
     }
+    finally {
+        // Hide the loading spinner regardless of success or failure
+        hideLoadingSpinner();
+    }
 }
 
 promptInput.addEventListener('keyup', function(event) {
@@ -116,6 +165,7 @@ window.addEventListener('click', function(event) {
 
 csvInput.addEventListener('change', async function(event) {
     const file = event.target.files[0];
+    console.log('Selected file:', file);
     
     if (!file || !file.name.endsWith('.csv')) {
         openModal('Please upload a valid CSV file.');
@@ -139,11 +189,14 @@ csvInput.addEventListener('change', async function(event) {
             method: 'POST',
             body: formData
         });
+        console.log('Upload response:', response);
 
         const data = await response.json();
 
         if (data.message) {
-            fileFeedback.textContent = data.message;  // Show success message
+            appendMessage(data.message, 'bot-message'); // Displaying the success message as a bot message
+        } else {
+            console.warn('No message found in response:', data); // Log if there's no message
         }
 
         // Read and preview the CSV using FileReader
