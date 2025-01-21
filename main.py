@@ -8,9 +8,6 @@ from dotenv import load_dotenv
 import pandas as pd
 import json
 from openai import OpenAI
-import sys
-from io import StringIO
-import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,72 +16,14 @@ app = FastAPI()
 
 dataset_columns = None
 data_sample = None
-df = None
-
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "analyze_data",
-            "description": "Perform mathematical operations (such as averages/means, medians, modes, ranges, sums, and counts) and data analysis based on the user query. This tool is used when the user asks for specific calculations, aggregations, or comparisons between numerical data points in the dataset.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The analysis query to execute on the dataset."
-                    }
-                },
-                "required": ["query"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "construct_spec_prompt",
-            "description": "Create a Vega-Lite specification based on the user query. This tool is used when the user requests visualizations or chart specifications based on relationships or comparisons between data columns (e.g., 'visualize [] vs []').",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "columns": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
-                        "description": "The dataset columns available for generating the Vega-Lite specification."
-                    },
-                    "data_sample": {
-                        "type": "object",
-                        "description": "The uploaded data set for which to generate a Vega-Lite specification."
-                    },
-                    "user_query": {
-                        "type": "string",
-                        "description": "The query for which to generate a Vega-Lite specification."
-                    }
-                },
-                "required": ["user_query"]
-            }
-        }
-    }
-]
-
-
-dataset_columns = None
-data_sample = None
 
 # Mount the static directory
 app.mount("/docs", StaticFiles(directory="docs"), name="docs")
 
-origins = [
-    "http://127.0.0.1:8001",  # Add the origin you want to allow
-    "http://localhost:8001",
-    "https://lmarfeo.github.io",
-]
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, #["https://lmarfeo.github.io"],  # Adjust this to restrict allowed origins
+    allow_origins=["https://lmarfeo.github.io"],  # Adjust this to restrict allowed origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -92,6 +31,7 @@ app.add_middleware(
 
 # Load OpenAI API key from environment variable
 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+print("Loaded API Key:", os.environ.get("OPENAI_API_KEY"))
 
 # Define request and response models
 class QueryRequest(BaseModel):
@@ -99,66 +39,6 @@ class QueryRequest(BaseModel):
 
 class QueryResponse(BaseModel):
     response: str
-
-def check_query_relevance(user_query, columns):
-    return f"""
-    Determine if the following user query is relevant to the dataset provided.
-    
-    User query: '{user_query}'
-    
-    Dataset columns: {', '.join(columns)}
-
-    If the user query DOES NOT RELATE to the data in the uploaded CSV file, return 'False'. If it does relate, return 'True'.
-
-    Note: Synonyms for dataset words should also be considered relevant.
-
-    Examples of user queries that DON'T pertain to data within a csv file:
-    - 'Hi'
-    - 'How are you?'
-
-    Examples of user queries that DO pertain to data within a MOVIES.CSV file:
-    - 'genre vs imdb rating'
-    - 'visualize content rating'
-    - 'average rotten tomatoes rating'
-    """
-
-# Sanitize input
-def sanitize_input(query: str) -> str:
-    query = re.sub(r"^(\s|`)*(?i:python)?\s*", "", query)
-    query = re.sub(r"(\s|`)*$", "", query)
-    return query
-
-# Function to execute generated code
-def execute_code(code: str, df: pd.DataFrame):
-    old_stdout = sys.stdout
-    sys.stdout = mystdout = StringIO()
-    
-    try:
-        cleaned_command = sanitize_input(code)
-        exec(cleaned_command, {"df": df})
-        sys.stdout = old_stdout
-        return mystdout.getvalue()
-    except Exception as e:
-        sys.stdout = old_stdout
-        return repr(e)
-    
-def analyze_data(query: str, df):
-    # Define the prompt to guide OpenAI's code generation
-    prompt = f"""
-    Write Python code to perform data analysis based on this query: '{query}'. 
-    The code should analyze {df}, a DataFrame, and output the result using print statements for each finding.
-    Only return Python code as your answer.
-    """
-    
-    # Call OpenAI API to generate code
-    try:
-        analysis_response = query(prompt, system_prompt="Generate Python code for data analysis", tools=None, tool_map=None)
-        # Assume the response contains the generated code
-        code = analysis_response.strip()  # Get the generated code
-        result = execute_code(code, df)  # Execute the generated code with the DataFrame
-        return result  # Return the output from the executed code
-    except Exception as e:
-        return f"Error analyzing data: {str(e)}"  
 
 def get_data_type(sample, column_name):
     # Get the first non-None value in the sample for the specified column
@@ -172,24 +52,21 @@ def get_data_type(sample, column_name):
             return "nominal"
     return "nominal"  # Default to nominal if no valid value is found
 
-def construct_spec_prompt(columns, data_sample, user_query):
+def construct_spec_prompt(columns, sample, user_query):
     return f"""
     You are a data visualization assistant specialized in creating Vega-Lite charts.
 
     Dataset Information:
     - Columns: {columns}
-    - Full Dataset (required for accurate visualization): {json.dumps(data_sample)}
+    - Full Dataset: {json.dumps(data_sample)}
 
     User Question: "{user_query}"
 
-    Please use all provided information, including the full dataset, to construct an accurate Vega-Lite specification.
-
-    Generate a function call with the following parameters:
-    - `user_query`: The question or visualization request from the user.
-    - `columns`: An array containing all available columns in the dataset.
-    - `data_sample`: A JSON object containing a small sample of the dataset.
-
-    Your task is to create a valid Vega-Lite JSON specification that directly answers the user's question.
+    Your task is to create a valid Vega-Lite JSON specification that directly answers the user's question. If the user query DOES NOT RELATE to the data in the uploaded csv file or contain any of the following words in {columns} send the following response: "The question '{user_query}' is not relevant to the dataset, which contains information about [ENTER DESCRIPOR HERE] and [ENTER DECRIPTOR HERE]. '{user_query}' does not pertain to any data analyisis or visualization task."
+    
+    Examples of user queries that don't pertain to data within a csv file:
+    - 'Hi'
+    - 'How are you?'
 
     If the user asks to visualize a specific column, do not plot it against itself. 
     Instead, select another column that is most appropriate to pair with it based on the dataset.
@@ -209,7 +86,7 @@ def construct_spec_prompt(columns, data_sample, user_query):
     7. DO NOT bracket the JSON specification with ''
 
     After constructing the JSON specification, carefully review it to ensure that it is well-structured and free of errors. Make sure the JSON format is correct, and all required fields are present and valid.
-    UNDER NO CIRCUMSTANCES bracket your JSON specification like so: json ``` [JSON SPEC HERE] ```
+
     Here are a few examples of valid Vega-Lite specifications:
 
     Example 1:
@@ -271,162 +148,87 @@ def construct_description_prompt(vega_spec):
 @app.post("/upload_csv")
 async def upload_csv(csv_file: UploadFile):
     global dataset_columns, data_sample
+    print("Uploading CSV...")  # Debug statement
+    # Read the CSV file
     contents = await csv_file.read()
     df = pd.read_csv(pd.io.common.BytesIO(contents))
 
+    # Set dataset_columns and data_sample
     dataset_columns = df.columns.tolist()
     data_sample = df.sample(n=100).to_dict(orient='records')
+    print(f"Dataset columns: {dataset_columns}")  # Debug statement
+    print(f"Data sample: {data_sample}")  # Debug statement
     return {"message": "CSV uploaded successfully"}
 
-# Define the tool map for referencing functions
-tool_map = {
-    "construct_spec_prompt": construct_spec_prompt, 
-    "analyze_data": analyze_data,  
-}
-def prepare_function_args(tool_name, args):
-    global data_sample  # Make sure data_sample is accessible here if it's needed
-
-    if tool_name == "analyze_data":
-        if 'query' not in args:
-            raise ValueError("Missing required 'query' parameter in analyze_data call")
-        if data_sample is None:
-            raise ValueError("Data sample is missing; upload a dataset first.")
-        # Convert data_sample back to a DataFrame for analysis
-        df = pd.DataFrame(data_sample)
-        return {"query": args["query"], "df": df.to_dict(orient="records")}
-        
-    elif tool_name == "construct_spec_prompt":
-        if 'user_query' not in args:
-            raise ValueError("Missing required 'user_query' parameter in construct_spec_prompt call")
-        
-        columns = args.get("columns", dataset_columns)
-        data_sample = args.get("data_sample", data_sample)
-        
-        return {
-            "user_query": args["user_query"],
-            "columns": columns,
-            "data_sample": data_sample,
-        }
-    else:
-        raise ValueError(f"Unknown tool: {tool_name}")
-
-@app.post("/query")
+@app.post("/query", response_model=QueryResponse)
 async def query_openai(request: QueryRequest):
     global dataset_columns, data_sample
+    print("Received query request...")  # Debug statement
+    print(f"Current dataset_columns: {dataset_columns}")  # Debug statement
+    print(f"Current data_sample: {data_sample}")  # Debug statement
 
     if not dataset_columns or not data_sample:
+        print("No dataset uploaded.")  # Debug statement
         return QueryResponse(response="Please upload a dataset first.")
 
-    user_query = request.prompt
-    
-    relevance_prompt = check_query_relevance(user_query, dataset_columns)
-    
-    # Send the relevance check prompt to the OpenAI API
-    relevance_response = query(relevance_prompt, system_prompt="Evaluate relevance", tools=None, tool_map=None)
+    # Construct the prompt for Vega-Lite specification
+    spec_prompt = construct_spec_prompt(dataset_columns, data_sample, request.prompt)
+    print(f"Specification Prompt: {spec_prompt}")  # Debug statement
 
-    if relevance_response.strip().lower() != 'true':
-        return QueryResponse(response=f"The question '{user_query}' is not relevant to the dataset.")
-    
-    system_prompt = "You are a data assistant. You can analyze data or create Vega-Lite charts."
-    
-    response_content = query(user_query, system_prompt, tools, tool_map)
-
-    if function_to_call.__name__ == "construct_spec_prompt":
-
+    while True:
         try:
-            response_json = json.loads(response_content)  # This assumes response_content is a string
-        except json.JSONDecodeError:
-            return JSONResponse(content={"error": "Failed to parse response from OpenAI."}, status_code=500)
+            spec_response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a data visualization assistant specialized in creating Vega-Lite charts."},
+                    {"role": "user", "content": spec_prompt}
+                ]
+            )
+            vega_spec = spec_response.choices[0].message.content.strip()
+            print("Vega-Lite Specification Response:", repr(vega_spec))  # Debug statement
 
-        description_prompt = construct_description_prompt(response_json)
+            # Remove surrounding single quotes if they exist
+            if vega_spec.startswith("'") and vega_spec.endswith("'"):
+                vega_spec = vega_spec[1:-1]
 
-        # Send the description prompt to OpenAI
-        description_response = query(description_prompt, system_prompt="Generate a chart description", tools=None, tool_map=None)
+            # Replace single quotes with double quotes
+            vega_spec = vega_spec.replace("'", '"')
 
-        # Return the parsed JSON response along with the generated description
-        return JSONResponse(content={
-            "specification": response_json,
-            "description": description_response.strip()
-        })
-    elif function_to_call.__name__ == "analyze_data":
-        try:
-            # This response_content would be the result of the data analysis as a direct answer
-            result = function_to_call(user_query, df)  # Use df instead of your_dataframe
-            return QueryResponse(response=result)
+            # Check if the response indicates irrelevance to the dataset
+            if "not relevant" in vega_spec.lower():
+                # Return the irrelevance message without parsing it as JSON
+                return QueryResponse(response=vega_spec)
+
+            # Try to parse the Vega-Lite specification as JSON
+            try:
+                vega_spec_json = json.loads(vega_spec)
+                print("Valid Vega-Lite Specification received.")  # Debug statement
+                break  # Exit the loop if parsing is successful
+            except json.JSONDecodeError as e:
+                print(f"JSONDecodeError: {str(e)}")
+                # Adjust the prompt to ask for a correction based on the error
+                spec_prompt += f"\n\nNote: There was a JSON parsing error: {str(e)}. Please correct the Vega-Lite specification."
+                continue  # Continue the loop to get a new specification
+
         except Exception as e:
-            return QueryResponse(response=f"Error analyzing data: {str(e)}")
+            return QueryResponse(response=f"Error calling OpenAI API: {str(e)}")
 
-    
+    # Generate description based on the valid Vega-Lite specification
+    description_prompt = construct_description_prompt(vega_spec_json)
+    print(f"Description Prompt: {description_prompt}")  # Debug statement
 
-def truncate_string(string: str, max_length: int = 100) -> str:
-    """Truncate the string to a maximum length and append '...' if truncated."""
-    if len(string) > max_length:
-        return string[:max_length] + "..."
-    return string
-
-def query(question, system_prompt, tools, tool_map, max_iterations=10):
-    global function_to_call
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.append({"role": "user", "content": question})
-    
-    # Proceed if query is relevant
-    i = 0
-    while i < max_iterations:
-        i += 1
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            temperature=0.0,
-            messages=messages,
-            tools=tools
+    try:
+        description_response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that provides descriptions for data visualizations."},
+                {"role": "user", "content": description_prompt}
+            ]
         )
-        
-        if response.choices[0].message.content is not None:
-            print_red(response.choices[0].message.content)
+        description = description_response.choices[0].message.content.strip()
+        print("Description Response:", repr(description))  # Debug statement
+    except Exception as e:
+        print(f"Failed to generate description: {str(e)}")
+        description = "Failed to generate description."
 
-        # Check if it's not a function call
-        if response.choices[0].message.tool_calls is None:
-            break
-
-        # Process function calls
-        messages.append(response.choices[0].message)
-        print(response.choices[0].message.tool_calls)
-        for tool_call in response.choices[0].message.tool_calls:
-            print_blue("calling:", tool_call.function.name, "with", tool_call.function.arguments)
-            # Prepare and call the function
-            arguments = prepare_function_args(tool_call.function.name, json.loads(tool_call.function.arguments))
-            print("Parsed arguments:", arguments)
-            function_to_call = tool_map[tool_call.function.name]
-            result = function_to_call(**arguments)
-            print("THIS IS THE RESULT: ", function_to_call)
-
-            # Create a message with the function call result
-            result_content = json.dumps({**arguments, "result": result})
-            function_call_result_message = {
-                "role": "tool",
-                "content": result_content,
-                "tool_call_id": tool_call.id,
-            }
-            print("Function result:", result_content)
-            
-            truncResult = truncate_string(result_content)
-            print_blue("action result:", truncResult)
-
-            messages.append(function_call_result_message)
-        
-        # Check iteration limit
-        if i == max_iterations and response.choices[0].message.tool_calls is not None:
-            print_red("Max iterations reached")
-            return "The tool agent could not complete the task in the given time. Please try again."
-
-    print(response.choices[0].message.content)
-    return response.choices[0].message.content
-
-
-# print msg in red, accept multiple strings like print statement
-def print_red(*strings):
-    print("\033[91m" + " ".join(strings) + "\033[0m")
-
-
-# print msg in blue, , accept multiple strings like print statement
-def print_blue(*strings):
-    print("\033[94m" + " ".join(strings) + "\033[0m")
+    return JSONResponse(content={"specification": vega_spec_json, "description": description})
